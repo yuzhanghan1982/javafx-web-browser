@@ -1,10 +1,13 @@
 import javafx.scene.image.Image;
+
 import java.util.ArrayList;
+
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -23,7 +26,7 @@ public class WebBrowser extends Application {
 	private Scene scene;
 	private BorderPane root;
 	private Button reloadButton, goButton, backButton, forwardButton,
-			homeButton, sethomeButton, addbookmarkButton;
+			homeButton, sethomeButton, addbookmarkButton, openBookmarkButton;
 	private ComboBox<String> bookmarksComboBox;
 	private TextField addressField;
 	private WebView webView;
@@ -62,6 +65,7 @@ public class WebBrowser extends Application {
 		homeButton.setGraphic(new ImageView(new Image(getClass()
 				.getResourceAsStream("resources/Home32.gif"))));
 		sethomeButton = new Button("Set Home");
+		openBookmarkButton = new Button("Open");
 		addbookmarkButton = new Button();
 		addbookmarkButton.setGraphic(new ImageView(new Image(getClass()
 				.getResourceAsStream("resources/Favorite32.gif"))));
@@ -71,7 +75,7 @@ public class WebBrowser extends Application {
 		bookmarksComboBox.setMaxWidth(200);
 		bookmarksComboBox.setMinWidth(200);
 		bookmarksComboBox.setPromptText("Go to bookmark ...");
-		bookmarksComboBox.valueProperty().addListener(bookmarks);
+//		bookmarksComboBox.valueProperty().addListener(bookmarks);
 
 		// Add listeners to the buttons.
 		reloadButton.setOnAction(reload);
@@ -79,6 +83,7 @@ public class WebBrowser extends Application {
 		backButton.setOnAction(back);
 		forwardButton.setOnAction(forward);
 		homeButton.setOnAction(home);
+		openBookmarkButton.setOnAction(openbookmark);
 		sethomeButton.setOnAction(sethome);
 		addbookmarkButton.setOnAction(addbookmark);
 
@@ -90,7 +95,7 @@ public class WebBrowser extends Application {
 		// Add all out navigation nodes to the hbox.
 		hBox0.getChildren().addAll(backButton, forwardButton, homeButton,
 				reloadButton, addressField, goButton);
-		hBox1.getChildren().addAll(addbookmarkButton, bookmarksComboBox,
+		hBox1.getChildren().addAll(addbookmarkButton, bookmarksComboBox, openBookmarkButton,
 				sethomeButton);
 		vBox.getChildren().addAll(hBox0, hBox1);
 
@@ -119,10 +124,8 @@ public class WebBrowser extends Application {
 		stage.setTitle("Web Browser");
 		stage.setScene(scene);
 
-		addressPointer++;
-		addresses.add(homeAddress);
-		addressField.setText(webEngine.getLocation());
-		resetButtons();
+		loadRandomAddress(homeAddress);
+
 
 		stage.show();
 	}
@@ -138,21 +141,48 @@ public class WebBrowser extends Application {
 	private EventHandler<ActionEvent> go = new EventHandler<ActionEvent>() {
 		@Override
 		public void handle(ActionEvent event) {
-			String address = addressField.getText();
-			address = extractAddress(address);
-			System.out.println(address);
-			webEngine.load("http://" + address);
-			addressField.setText(webEngine.getLocation());
-
-			addressPointer++;
-			while (addresses.size() - 1 >= addressPointer) {
-				addresses.remove(addresses.size() - 1);
-			}
-			addresses.add(address);
-			resetButtons();
-
+			String address = null;
+			loadRandomAddress(address);
 		}
 	};
+	
+	
+	private EventHandler<ActionEvent> home = new EventHandler<ActionEvent>() {
+		@Override
+		public void handle(ActionEvent event) {
+			loadRandomAddress(homeAddress);
+		}
+	};
+	
+	private EventHandler<ActionEvent> openbookmark = new EventHandler<ActionEvent>() {
+		@Override
+		public void handle(ActionEvent event) {
+			
+			String address = bookmarksComboBox.getSelectionModel().getSelectedItem();
+			loadRandomAddress(address);		
+		}
+	};
+	
+	private void loadRandomAddress(String address) {
+		if(address == null)
+			address = addressField.getText();
+		address = extractAddress(address);
+		System.out.println(address);
+		webEngine.load("http://" + address);
+		addressField.setText(webEngine.getLocation());
+
+		removeObsoleteAddresses();
+		addresses.add(address);
+		resetButtons();
+	}
+
+	private void removeObsoleteAddresses() {
+		addressPointer++;
+		while (addresses.size() - 1 >= addressPointer) {
+			addresses.remove(addresses.size() - 1);
+		}
+	}
+	
 
 	private EventHandler<ActionEvent> back = new EventHandler<ActionEvent>() {
 		@Override
@@ -160,9 +190,7 @@ public class WebBrowser extends Application {
 
 			addressPointer--;
 			if (addressPointer >= 0) {
-				System.out.println(addresses.get(addressPointer));
-				webEngine.load("http://" + addresses.get(addressPointer));
-				addressField.setText(webEngine.getLocation());
+				loadPointedAddress();
 			} else {
 				addressPointer = 0;
 			}
@@ -176,9 +204,7 @@ public class WebBrowser extends Application {
 
 			addressPointer++;
 			if (addressPointer <= addresses.size() - 1) {
-				System.out.println(addresses.get(addressPointer));
-				webEngine.load("http://" + addresses.get(addressPointer));
-				addressField.setText(webEngine.getLocation());
+				loadPointedAddress();
 			} else {
 				addressPointer = addresses.size() - 1;
 			}
@@ -186,22 +212,11 @@ public class WebBrowser extends Application {
 		}
 	};
 
-	private EventHandler<ActionEvent> home = new EventHandler<ActionEvent>() {
-		@Override
-		public void handle(ActionEvent event) {
-			homeAddress = extractAddress(homeAddress);
-			System.out.println(homeAddress);
-			webEngine.load("http://" + homeAddress);
-			addressField.setText(webEngine.getLocation());
-
-			addressPointer++;
-			while (addresses.size() - 1 >= addressPointer) {
-				addresses.remove(addresses.size() - 1);
-			}
-			addresses.add(homeAddress);
-			resetButtons();
-		}
-	};
+	private void loadPointedAddress() {
+		System.out.println(addresses.get(addressPointer));
+		webEngine.load("http://" + addresses.get(addressPointer));
+		addressField.setText(webEngine.getLocation());
+	}
 
 	private EventHandler<ActionEvent> sethome = new EventHandler<ActionEvent>() {
 		@Override
@@ -214,7 +229,7 @@ public class WebBrowser extends Application {
 
 		}
 	};
-
+	
 	private EventHandler<ActionEvent> addbookmark = new EventHandler<ActionEvent>() {
 		@Override
 		public void handle(ActionEvent event) {
@@ -226,20 +241,20 @@ public class WebBrowser extends Application {
 		}
 	};
 
+	/*
 	private ChangeListener<String> bookmarks = new ChangeListener<String>() {
 		@Override
 		public void changed(ObservableValue ov, String t, String t1) {
+			
 			webEngine.load("http://" + t1);
 			addressField.setText(webEngine.getLocation());
 
-			addressPointer++;
-			while (addresses.size() - 1 >= addressPointer) {
-				addresses.remove(addresses.size() - 1);
-			}
+			removeObsoleteAddresses();
 			addresses.add(t1);
 			resetButtons();
 		}
 	};
+	*/
 
 	private void resetButtons() {
 		System.out.println(addresses);
@@ -258,9 +273,12 @@ public class WebBrowser extends Application {
 
 	private String extractAddress(String fullAddress) {
 		String result = fullAddress;
-		if (fullAddress.startsWith("http://")) {
-			result = fullAddress.substring(7);
+		if (fullAddress.startsWith("http://") ) {
+			result = fullAddress.substring("http://".length());
 		}
+		else if (fullAddress.startsWith("https://")) {
+			result = fullAddress.substring("https://".length());
+		} 
 		return result;
 	}
 
